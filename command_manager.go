@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 
-	"github.com/zerodoctor/zdcli/tui/data"
+	"github.com/zerodoctor/zdtui/data"
 )
 
 type CommandManager struct {

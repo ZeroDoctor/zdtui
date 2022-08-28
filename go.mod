@@ -9,7 +9,6 @@ require (
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/evertras/bubble-table v0.14.5
 	github.com/muesli/termenv v0.12.0
-	github.com/zerodoctor/zdcli v0.0.0-20220826215502-5a8d0bfc2725
 )
 
 require (

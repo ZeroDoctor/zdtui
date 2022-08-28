@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/zerodoctor/zdcli/tui/data"
+import "github.com/zerodoctor/zdtui/data"
 
 type ScreenManager struct {
 	vm      *ViewManager

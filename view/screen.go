@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/awesome-gocui/gocui"
-	"github.com/zerodoctor/zdcli/tui/data"
+	"github.com/zerodoctor/zdtui/data"
 )
 
 type Screen struct {

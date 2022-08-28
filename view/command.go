@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/awesome-gocui/gocui"
-	"github.com/zerodoctor/zdcli/tui"
-	"github.com/zerodoctor/zdcli/tui/data"
+	tui "github.com/zerodoctor/zdtui"
+	"github.com/zerodoctor/zdtui/data"
 )
 
 type Command struct {

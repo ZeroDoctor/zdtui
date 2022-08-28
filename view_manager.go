@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/awesome-gocui/gocui"
-	"github.com/zerodoctor/zdcli/tui/data"
+	"github.com/zerodoctor/zdtui/data"
 )
 
 func NewData(t, m string) data.Data {
