@@ -96,6 +96,7 @@ func (t *TextInputForm) View() string {
 
 	for i := range t.Inputs {
 		b.WriteString(t.Inputs[i].View())
+
 		if i < len(t.Inputs)-1 {
 			b.WriteRune('\n')
 		}

@@ -28,22 +28,47 @@ var (
 	errStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(RED_COL)).Render
 )
 
-var EOF_ProgErr error = errors.New("EOF")
+var EOF_ProgErr DefProgErr = errors.New("EOF")
+var Cancel_ProgErr DefProgErr = errors.New("progress was cancelled")
+
+type ProgressWork func() (*tea.Program, error)
+
+type ProgressOption func(*Progress)
+
+func ProgEnableFocus() ProgressOption {
+	return func(p *Progress) {
+		p.enableFocus = true
+	}
+}
+
+func ProgDontQuitOnErr() ProgressOption {
+	return func(p *Progress) {
+		p.quitOnErr = false
+	}
+}
 
 type DefTick float64
 type DefProgErr error
 
 type Progress struct {
-	progress progress.Model
-	err      error
+	Progress    progress.Model
+	enableFocus bool
+	focus       bool
+	quitOnErr   bool
+	err         error
 }
 
-func NewProgress(work func() (*tea.Program, error)) *Progress {
+func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
 	prog := &Progress{
-		progress: progress.New(
+		quitOnErr: true,
+		Progress: progress.New(
 			progress.WithScaledGradient(GREEN_COL, BLUE_COL),
 			progress.WithColorProfile(termenv.ANSI256),
 		),
+	}
+
+	for _, opt := range opts {
+		opt(prog)
 	}
 
 	go func() {
@@ -61,74 +86,63 @@ func NewProgress(work func() (*tea.Program, error)) *Progress {
 	return prog
 }
 
+func (p *Progress) Focus(b bool) tea.Cmd {
+	p.focus = b
+	return func() tea.Msg {
+		return nil
+	}
+}
+
 func (p *Progress) Init() tea.Cmd { return nil }
 
 func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	tea.Printf("update was called...[msg_type=%T]\n", msg)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
-			return p, tea.Quit
 
+		if !p.focus && p.enableFocus {
+			return p, nil
+		}
+
+		for i := range msg.Runes {
+			switch msg.Runes[i] {
+			case 'c':
+				return p, func() tea.Msg { return Cancel_ProgErr }
+			}
 		}
 
 	case tea.WindowSizeMsg:
-		p.progress.Width = msg.Width - PADDING*2 - 4
-		if p.progress.Width > MAX_WIDTH {
-			p.progress.Width = MAX_WIDTH
+		p.Progress.Width = msg.Width - PADDING*2 - 4
+		if p.Progress.Width > MAX_WIDTH {
+			p.Progress.Width = MAX_WIDTH
 		}
 
 		return p, nil
 
 	case DefProgErr:
-		if msg == EOF_ProgErr {
-			var cmds []tea.Cmd
-
-			cmds = append(cmds,
-				tea.Sequentially(
-					tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
-						return nil
-					}),
-					tea.Quit,
-				),
+		var quitCmd tea.Cmd
+		if p.quitOnErr {
+			quitCmd = tea.Sequentially(
+				tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
+					return nil
+				}),
+				tea.Quit,
 			)
+		}
 
-			cmds = append(cmds, p.progress.IncrPercent(float64(1.0)))
-
-			return p, tea.Batch(cmds...)
+		if msg == EOF_ProgErr {
+			return p, tea.Batch(quitCmd, p.Progress.IncrPercent(1.0))
 		}
 
 		p.err = msg
 
-		return p, tea.Sequentially(
-			tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
-				return nil
-			}),
-			tea.Quit,
-		)
+		return p, quitCmd
 
 	case DefTick:
-		var cmds []tea.Cmd
-
-		if msg >= 1.0 {
-			cmds = append(cmds,
-				tea.Sequentially(
-					tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
-						return nil
-					}),
-					tea.Quit,
-				),
-			)
-		}
-
-		cmds = append(cmds, p.progress.IncrPercent(float64(msg)))
-
-		return p, tea.Batch(cmds...)
+		return p, p.Progress.IncrPercent(float64(msg))
 
 	case progress.FrameMsg:
-		pm, cmd := p.progress.Update(msg)
-		p.progress = pm.(progress.Model)
+		pm, cmd := p.Progress.Update(msg)
+		p.Progress = pm.(progress.Model)
 
 		return p, cmd
 	}
@@ -144,5 +158,5 @@ func (p *Progress) View() string {
 
 	pad := strings.Repeat(" ", PADDING)
 	return pad + fn() + "\n" +
-		pad + p.progress.View() + "\n"
+		pad + p.Progress.View() + "\n"
 }
