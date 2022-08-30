@@ -33,6 +33,7 @@ type MultiProgress struct {
 	workers  int
 	maxCap   int
 	bars     []*Progress
+	progChan chan *Progress
 	err      error
 	pondOpt  []pond.Option
 	pool     *pond.TaskGroupWithContext
@@ -42,9 +43,10 @@ type MultiProgress struct {
 func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...MultiProgressOption) (*MultiProgress, context.Context) {
 	m := &MultiProgress{
 		workers:  5,
-		maxCap:   0,
+		maxCap:   len(workload),
 		workload: workload,
 		ctx:      ctx,
+		progChan: make(chan *Progress, len(workload)),
 	}
 
 	for _, opt := range opts {
@@ -65,8 +67,6 @@ func (m *MultiProgress) Init() tea.Cmd {
 			m.pool.Submit(func() error {
 				prog := NewProgress(m.workload[n])
 				m.bars = append(m.bars, prog)
-
-				go prog.Start()
 
 				return nil
 			})

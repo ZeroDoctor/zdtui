@@ -73,6 +73,8 @@ func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
 		opt(prog)
 	}
 
+	go prog.Start()
+
 	return prog
 }
 
@@ -95,7 +97,9 @@ func (p *Progress) Focus(b bool) tea.Cmd {
 	}
 }
 
-func (p *Progress) Init() tea.Cmd { return nil }
+func (p *Progress) Init() tea.Cmd {
+	return nil
+}
 
 func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {

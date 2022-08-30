@@ -8,10 +8,8 @@ import (
 	"github.com/zerodoctor/zdtui/ui"
 )
 
-func main() {
-	var p *tea.Program
-
-	progress := ui.NewProgress(func() (*tea.Program, error) {
+func work(p *tea.Program) ui.ProgressWork {
+	return func() (*tea.Program, error) {
 		time.Sleep(1 * time.Second)
 		p.Send(ui.DefTick(0.3))
 		time.Sleep(200 * time.Millisecond)
@@ -20,9 +18,12 @@ func main() {
 		p.Send(ui.DefTick(0.1))
 
 		return p, nil
-	})
+	}
+}
 
-	go progress.Start()
+func main() {
+	var p *tea.Program
+	progress := ui.NewProgress(work(p))
 
 	p = tea.NewProgram(progress)
 	if err := p.Start(); err != nil {
