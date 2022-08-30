@@ -56,6 +56,8 @@ github.com/zerodoctor/zdtui v0.0.0-20220828020615-7d1da15f2efe h1:jOaYPQ3rpDRxIQ
 github.com/zerodoctor/zdtui v0.0.0-20220828020615-7d1da15f2efe/go.mod h1:6KLnYjR5/HhNqm05nx2yXKRlr8uM+fQ1B1531sX4noA=
 github.com/zerodoctor/zdtui v0.0.0-20220829215155-11998868dbc2 h1:vcD/Zn4Nds+t2ueWwtSUuLnYZePAtkq6k5MrJNa0vk4=
 github.com/zerodoctor/zdtui v0.0.0-20220829215155-11998868dbc2/go.mod h1:qkNSqcAqnPML+F/wwv88ED+9sn55iIFf7LP4HJtWiGI=
+github.com/zerodoctor/zdtui v0.0.0-20220830020810-49d1c979d1bb h1:S1hyIbYqb1rr1XuGvjULmvHzCnZhmB9FVFeBPX3gTrY=
+github.com/zerodoctor/zdtui v0.0.0-20220830020810-49d1c979d1bb/go.mod h1:qkNSqcAqnPML+F/wwv88ED+9sn55iIFf7LP4HJtWiGI=
 golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

@@ -54,12 +54,14 @@ type Progress struct {
 	Progress    progress.Model
 	enableFocus bool
 	focus       bool
+	work        ProgressWork
 	quitOnErr   bool
 	err         error
 }
 
 func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
 	prog := &Progress{
+		work:      work,
 		quitOnErr: true,
 		Progress: progress.New(
 			progress.WithScaledGradient(GREEN_COL, BLUE_COL),
@@ -71,19 +73,19 @@ func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
 		opt(prog)
 	}
 
-	go func() {
-		var p *tea.Program
-		var err error
-
-		if p, err = work(); err != nil {
-			p.Send(DefProgErr(err))
-			return
-		}
-
-		p.Send(DefProgErr(EOF_ProgErr))
-	}()
-
 	return prog
+}
+
+func (p *Progress) Start() {
+	var pg *tea.Program
+	var err error
+
+	if pg, err = p.work(); err != nil {
+		pg.Send(DefProgErr(err))
+		return
+	}
+
+	pg.Send(DefProgErr(EOF_ProgErr))
 }
 
 func (p *Progress) Focus(b bool) tea.Cmd {

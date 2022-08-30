@@ -22,6 +22,8 @@ func main() {
 		return p, nil
 	})
 
+	go progress.Start()
+
 	p = tea.NewProgram(progress)
 	if err := p.Start(); err != nil {
 		log.Fatalf("failed to start program [error=%s]", err.Error())

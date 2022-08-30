@@ -11,10 +11,6 @@ import (
 
 func work1(p *tea.Program) ui.ProgressWork {
 	return func() (*tea.Program, error) {
-		for p == nil {
-			time.Sleep(500 * time.Millisecond)
-		}
-
 		time.Sleep(1 * time.Second)
 		p.Send(ui.DefTick(0.3))
 		time.Sleep(200 * time.Millisecond)
@@ -28,10 +24,6 @@ func work1(p *tea.Program) ui.ProgressWork {
 
 func work2(p *tea.Program) ui.ProgressWork {
 	return func() (*tea.Program, error) {
-		for p == nil {
-			time.Sleep(500 * time.Millisecond)
-		}
-
 		time.Sleep(1 * time.Second)
 		p.Send(ui.DefTick(0.3))
 		time.Sleep(200 * time.Millisecond)

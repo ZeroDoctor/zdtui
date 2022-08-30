@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/charmbracelet/bubbletea v0.22.1
-	github.com/zerodoctor/zdtui v0.0.0-20220829215155-11998868dbc2
+	github.com/zerodoctor/zdtui v0.0.0-20220830020810-49d1c979d1bb
 )
 
 require (

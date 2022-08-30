@@ -58,17 +58,19 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 }
 
 func (m *MultiProgress) Init() tea.Cmd {
-	for i := range m.workload {
-		n := i
-		m.pool.Submit(func() error {
-			progress := NewProgress(m.workload[n])
-			m.bars = append(m.bars, progress)
-
-			return nil
-		})
-	}
-
 	return func() tea.Msg {
+
+		for i := range m.workload {
+			n := i
+			m.pool.Submit(func() error {
+				prog := NewProgress(m.workload[n])
+				m.bars = append(m.bars, prog)
+
+				go prog.Start()
+
+				return nil
+			})
+		}
 
 		return nil
 	}
@@ -106,11 +108,11 @@ func (m *MultiProgress) View() string {
 	var builder strings.Builder
 
 	for i := range m.bars {
-		builder.WriteString(m.bars[i].View())
+		builder.WriteString(m.bars[i].View() + "\n")
 
-		if i < len(m.bars)-1 {
-			builder.WriteRune('\n')
-		}
+		// if i < len(m.bars)-1 {
+		// 	builder.WriteRune('\n')
+		// }
 	}
 
 	return builder.String()
