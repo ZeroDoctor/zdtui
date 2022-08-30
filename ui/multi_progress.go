@@ -54,6 +54,10 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 	pd := pond.New(m.workers, m.maxCap, m.pondOpt...)
 	m.pool, m.ctx = pd.GroupContext(m.ctx)
 
+	return m, m.ctx
+}
+
+func (m *MultiProgress) Init() tea.Cmd {
 	for i := range m.workload {
 		n := i
 		m.pool.Submit(func() error {
@@ -64,10 +68,6 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 		})
 	}
 
-	return m, m.ctx
-}
-
-func (m *MultiProgress) Init() tea.Cmd {
 	return func() tea.Msg {
 
 		return nil
