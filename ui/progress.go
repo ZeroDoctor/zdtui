@@ -160,10 +160,10 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.displayMsg = "done!"
 
 				if !p.quitOnErr {
-					return p, p.Progress.IncrPercent(1.0)
+					return p, tea.Batch(p.Progress.IncrPercent(1.0), p.waitForActivity())
 				}
 
-				return p, tea.Batch(quitCmd, p.Progress.IncrPercent(1.0))
+				return p, tea.Batch(quitCmd, p.Progress.IncrPercent(1.0), p.waitForActivity())
 			}
 
 			p.err = msg.err
