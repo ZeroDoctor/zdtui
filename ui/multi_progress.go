@@ -56,24 +56,26 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 	pd := pond.New(m.workers, m.maxCap, m.pondOpt...)
 	m.pool, m.ctx = pd.GroupContext(m.ctx)
 
+	for i := range workload {
+		m.bars = append(m.bars, NewProgress(m.workload[i], ProgSetID(i), ProgDontQuitOnErr()))
+	}
+
 	return m, m.ctx
 }
 
 func (m *MultiProgress) Init() tea.Cmd {
-	return func() tea.Msg {
-
-		for i := range m.workload {
-			n := i
-			m.pool.Submit(func() error {
-				prog := NewProgress(m.workload[n])
-				m.bars = append(m.bars, prog)
-
-				return nil
-			})
-		}
-
-		return nil
+	var cmds []tea.Cmd
+	for i := range m.bars {
+		n := i
+		cmds = append(cmds,
+			m.bars[n].Init(),
+			func() tea.Msg {
+				return m.bars[n].Start()
+			},
+		)
 	}
+
+	return tea.Batch(cmds...)
 }
 
 func (m *MultiProgress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -85,16 +87,18 @@ func (m *MultiProgress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		}
+	case ProgMsg:
+		if msg.id == -1 {
+			break
+		}
+
+		model, cmd := m.bars[msg.id].Update(msg)
+		m.bars[msg.id] = model.(*Progress)
+
+		return m, cmd
 	}
 
 	cmds := make([]tea.Cmd, len(m.bars))
-
-	// for i := range m.bars {
-	// 	var model tea.Model
-	// 	model, cmds[i] = m.bars[i].Progress.Update(msg)
-	// 	m.bars[i].Progress = model.(progress.Model)
-	// }
-
 	for i := range m.bars {
 		var model tea.Model
 		model, cmds[i] = m.bars[i].Update(msg)
@@ -109,10 +113,6 @@ func (m *MultiProgress) View() string {
 
 	for i := range m.bars {
 		builder.WriteString(m.bars[i].View() + "\n")
-
-		// if i < len(m.bars)-1 {
-		// 	builder.WriteRune('\n')
-		// }
 	}
 
 	return builder.String()

@@ -31,7 +31,9 @@ var (
 var EOF_ProgErr DefProgErr = errors.New("EOF")
 var Cancel_ProgErr DefProgErr = errors.New("progress was cancelled")
 
-type ProgressWork func() (*tea.Program, error)
+type DefProgErr error
+
+type ProgressWork func(p *Progress) error
 
 type ProgressOption func(*Progress)
 
@@ -47,47 +49,66 @@ func ProgDontQuitOnErr() ProgressOption {
 	}
 }
 
-type DefTick float64
-type DefProgErr error
+func ProgSetID(id int) ProgressOption {
+	return func(p *Progress) {
+		p.id = id
+	}
+}
+
+type ProgMsg struct {
+	id     int
+	amount float64
+	err    DefProgErr
+}
 
 type Progress struct {
-	Progress    progress.Model
+	id          int
 	enableFocus bool
-	focus       bool
-	work        ProgressWork
 	quitOnErr   bool
-	err         error
+	focus       bool
+
+	work       ProgressWork
+	msgChan    chan tea.Msg
+	displayMsg string
+	err        error
+
+	Progress progress.Model
 }
 
 func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
 	prog := &Progress{
-		work:      work,
-		quitOnErr: true,
+		id:         -1,
+		work:       work,
+		quitOnErr:  true,
+		displayMsg: "working...",
 		Progress: progress.New(
 			progress.WithScaledGradient(GREEN_COL, BLUE_COL),
 			progress.WithColorProfile(termenv.ANSI256),
 		),
+		msgChan: make(chan tea.Msg, 50),
 	}
 
 	for _, opt := range opts {
 		opt(prog)
 	}
 
-	go prog.Start()
-
 	return prog
 }
 
-func (p *Progress) Start() {
-	var pg *tea.Program
-	var err error
-
-	if pg, err = p.work(); err != nil {
-		pg.Send(DefProgErr(err))
-		return
+func (p *Progress) Start() tea.Msg {
+	if err := p.work(p); err != nil {
+		return ProgMsg{err: DefProgErr(err)}
 	}
 
-	pg.Send(DefProgErr(EOF_ProgErr))
+	return ProgMsg{err: DefProgErr(EOF_ProgErr)}
+}
+
+func (p *Progress) SendTick(tick float64) {
+	p.msgChan <- ProgMsg{id: p.id, amount: tick}
+}
+
+func (p *Progress) waitForActivity() tea.Cmd {
+	return func() tea.Msg { return <-p.msgChan }
 }
 
 func (p *Progress) Focus(b bool) tea.Cmd {
@@ -98,13 +119,12 @@ func (p *Progress) Focus(b bool) tea.Cmd {
 }
 
 func (p *Progress) Init() tea.Cmd {
-	return nil
+	return p.waitForActivity()
 }
 
 func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-
 		if !p.focus && p.enableFocus {
 			return p, nil
 		}
@@ -124,27 +144,37 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return p, nil
 
-	case DefProgErr:
-		var quitCmd tea.Cmd
-		if p.quitOnErr {
-			quitCmd = tea.Sequentially(
-				tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
-					return nil
-				}),
-				tea.Quit,
-			)
+	case ProgMsg:
+		if msg.err != nil {
+			var quitCmd tea.Cmd
+			if p.quitOnErr {
+				quitCmd = tea.Sequentially(
+					tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
+						return nil
+					}),
+					tea.Quit,
+				)
+			}
+
+			if msg.err == EOF_ProgErr {
+				p.displayMsg = "done!"
+
+				if !p.quitOnErr {
+					return p, p.Progress.IncrPercent(1.0)
+				}
+
+				return p, tea.Batch(quitCmd, p.Progress.IncrPercent(1.0))
+			}
+
+			p.err = msg.err
+
+			return p, quitCmd
 		}
 
-		if msg == EOF_ProgErr {
-			return p, tea.Batch(quitCmd, p.Progress.IncrPercent(1.0))
-		}
-
-		p.err = msg
-
-		return p, quitCmd
-
-	case DefTick:
-		return p, p.Progress.IncrPercent(float64(msg))
+		return p, tea.Batch(
+			p.Progress.IncrPercent(float64(msg.amount)),
+			p.waitForActivity(),
+		)
 
 	case progress.FrameMsg:
 		pm, cmd := p.Progress.Update(msg)
@@ -157,7 +187,7 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p *Progress) View() string {
-	fn := func() string { return defStyle("working...") }
+	fn := func() string { return defStyle(p.displayMsg) }
 	if p.err != nil {
 		fn = func() string { return errStyle(p.err.Error()) }
 	}
