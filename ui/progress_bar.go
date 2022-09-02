@@ -56,9 +56,10 @@ func ProgSetID(id int) ProgressOption {
 }
 
 type ProgMsg struct {
-	id     int
-	amount float64
-	err    DefProgErr
+	id        int
+	amount    float64
+	nextFrame tea.Cmd
+	err       DefProgErr
 }
 
 type Progress struct {
@@ -66,6 +67,7 @@ type Progress struct {
 	enableFocus bool
 	quitOnErr   bool
 	focus       bool
+	finished    bool
 
 	work       ProgressWork
 	msgChan    chan tea.Msg
@@ -145,15 +147,16 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return p, nil
 
 	case ProgMsg:
+		var cmds []tea.Cmd
+
 		if msg.err != nil {
-			var quitCmd tea.Cmd
 			if p.quitOnErr {
-				quitCmd = tea.Sequentially(
+				cmds = append(cmds, tea.Sequentially(
 					tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
 						return nil
 					}),
 					tea.Quit,
-				)
+				))
 			}
 
 			if msg.err == EOF_ProgErr {
@@ -163,12 +166,13 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return p, tea.Batch(p.Progress.IncrPercent(1.0), p.waitForActivity())
 				}
 
-				return p, tea.Batch(quitCmd, p.Progress.IncrPercent(1.0), p.waitForActivity())
+				cmds = append(cmds, p.Progress.IncrPercent(1.0))
+				return p, tea.Batch(cmds...)
 			}
 
 			p.err = msg.err
 
-			return p, quitCmd
+			return p, tea.Batch(cmds...)
 		}
 
 		return p, tea.Batch(

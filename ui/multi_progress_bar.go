@@ -57,7 +57,11 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 	m.pool, m.ctx = pd.GroupContext(m.ctx)
 
 	for i := range workload {
-		m.bars = append(m.bars, NewProgress(m.workload[i], ProgSetID(i), ProgDontQuitOnErr()))
+		m.bars = append(m.bars, NewProgress(
+			m.workload[i],
+			ProgSetID(i),
+			// ProgDontQuitOnErr(),
+		))
 	}
 
 	return m, m.ctx
@@ -100,9 +104,13 @@ func (m *MultiProgress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	cmds := make([]tea.Cmd, len(m.bars))
 	for i := range m.bars {
+		if m.bars[i].finished {
+			continue
+		}
+
 		var model tea.Model
 		model, cmds[i] = m.bars[i].Update(msg)
-		m.bars[i] = model.(*Progress)
+		m.bars[i].Progress = model.(*Progress).Progress
 	}
 
 	return m, tea.Batch(cmds...)
