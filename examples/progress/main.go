@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -23,7 +24,11 @@ func work() ui.ProgressWork {
 
 func main() {
 	var p *tea.Program
-	progress := ui.NewProgress(work())
+	progress := ui.NewProgress(context.Background(), work())
+
+	go func() {
+		p.Send(progress.Start())
+	}()
 
 	p = tea.NewProgram(progress)
 	if err := p.Start(); err != nil {
