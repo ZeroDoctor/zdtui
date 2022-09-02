@@ -9,44 +9,44 @@ import (
 	"github.com/zerodoctor/zdtui/ui"
 )
 
-func work1(p *tea.Program) ui.ProgressWork {
-	return func() (*tea.Program, error) {
+func work1() ui.ProgressWork {
+	return func(p *ui.ProgressBar) error {
 		time.Sleep(1 * time.Second)
-		p.Send(ui.DefTick(0.3))
+		p.SendTick((0.3))
 		time.Sleep(200 * time.Millisecond)
-		p.Send(ui.DefTick(0.1))
+		p.SendTick((0.1))
 		time.Sleep(1 * time.Second)
-		p.Send(ui.DefTick(0.1))
+		p.SendTick((0.1))
 
-		return p, nil
+		return nil
 	}
 }
 
-func work2(p *tea.Program) ui.ProgressWork {
-	return func() (*tea.Program, error) {
+func work2() ui.ProgressWork {
+	return func(p *ui.ProgressBar) error {
 		time.Sleep(1 * time.Second)
-		p.Send(ui.DefTick(0.3))
+		p.SendTick((0.3))
 		time.Sleep(200 * time.Millisecond)
-		p.Send(ui.DefTick(0.1))
+		p.SendTick((0.1))
 		time.Sleep(1 * time.Second)
-		p.Send(ui.DefTick(0.1))
+		p.SendTick((0.1))
 		time.Sleep(1 * time.Second)
-		p.Send(ui.DefTick(0.1))
+		p.SendTick((0.1))
 		time.Sleep(1 * time.Second)
-		p.Send(ui.DefTick(0.1))
+		p.SendTick((0.1))
 
-		return p, nil
+		return nil
 	}
 }
 
 func main() {
 	var p *tea.Program
-	var mp *ui.MultiProgress
+	var mp *ui.MultiProgressBar
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mp, ctx = ui.NewMultiProgress(ctx, []ui.ProgressWork{work1(p), work2(p), work1(p)})
+	mp, ctx = ui.NewMultiProgress(ctx, []ui.ProgressWork{work1(), work2(), work1()})
 
 	p = tea.NewProgram(mp)
 	if err := p.Start(); err != nil {

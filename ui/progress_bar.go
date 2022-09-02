@@ -28,29 +28,39 @@ var (
 	errStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(RED_COL)).Render
 )
 
-var EOF_ProgErr DefProgErr = errors.New("EOF")
-var Cancel_ProgErr DefProgErr = errors.New("progress was cancelled")
-
 type DefProgErr error
 
-type ProgressWork func(p *Progress) error
+var (
+	EOF_ProgErr    DefProgErr = errors.New("EOF")
+	Cancel_ProgErr DefProgErr = errors.New("progress was cancelled")
+)
 
-type ProgressOption func(*Progress)
+type DefProgStatus int
+
+const (
+	ProgRunning DefProgStatus = iota
+	ProgComplete
+	ProgFinished
+)
+
+type ProgressWork func(p *ProgressBar) error
+
+type ProgressOption func(*ProgressBar)
 
 func ProgEnableFocus() ProgressOption {
-	return func(p *Progress) {
+	return func(p *ProgressBar) {
 		p.enableFocus = true
 	}
 }
 
 func ProgDontQuitOnErr() ProgressOption {
-	return func(p *Progress) {
+	return func(p *ProgressBar) {
 		p.quitOnErr = false
 	}
 }
 
 func ProgSetID(id int) ProgressOption {
-	return func(p *Progress) {
+	return func(p *ProgressBar) {
 		p.id = id
 	}
 }
@@ -58,16 +68,17 @@ func ProgSetID(id int) ProgressOption {
 type ProgMsg struct {
 	id        int
 	amount    float64
-	nextFrame tea.Cmd
 	err       DefProgErr
+	nextFrame tea.Cmd
 }
 
-type Progress struct {
+type ProgressBar struct {
 	id          int
 	enableFocus bool
 	quitOnErr   bool
 	focus       bool
-	finished    bool
+	status      DefProgStatus
+	percentage  float64
 
 	work       ProgressWork
 	msgChan    chan tea.Msg
@@ -77,8 +88,8 @@ type Progress struct {
 	Progress progress.Model
 }
 
-func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
-	prog := &Progress{
+func NewProgress(work ProgressWork, opts ...ProgressOption) *ProgressBar {
+	prog := &ProgressBar{
 		id:         -1,
 		work:       work,
 		quitOnErr:  true,
@@ -97,34 +108,36 @@ func NewProgress(work ProgressWork, opts ...ProgressOption) *Progress {
 	return prog
 }
 
-func (p *Progress) Start() tea.Msg {
+func (p *ProgressBar) Start() tea.Msg {
 	if err := p.work(p); err != nil {
-		return ProgMsg{err: DefProgErr(err)}
+		return ProgMsg{id: p.id, err: DefProgErr(err)}
 	}
 
-	return ProgMsg{err: DefProgErr(EOF_ProgErr)}
+	return ProgMsg{id: p.id, err: DefProgErr(EOF_ProgErr)}
 }
 
-func (p *Progress) SendTick(tick float64) {
+func (p *ProgressBar) SendTick(tick float64) {
 	p.msgChan <- ProgMsg{id: p.id, amount: tick}
 }
 
-func (p *Progress) waitForActivity() tea.Cmd {
-	return func() tea.Msg { return <-p.msgChan }
+func (p *ProgressBar) waitForActivity() tea.Cmd {
+	return func() tea.Msg {
+		return <-p.msgChan
+	}
 }
 
-func (p *Progress) Focus(b bool) tea.Cmd {
+func (p *ProgressBar) Focus(b bool) tea.Cmd {
 	p.focus = b
 	return func() tea.Msg {
 		return nil
 	}
 }
 
-func (p *Progress) Init() tea.Cmd {
+func (p *ProgressBar) Init() tea.Cmd {
 	return p.waitForActivity()
 }
 
-func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (p *ProgressBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if !p.focus && p.enableFocus {
@@ -148,8 +161,13 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ProgMsg:
 		var cmds []tea.Cmd
+		if msg.nextFrame != nil {
+			cmds = append(cmds, msg.nextFrame)
+		}
 
 		if msg.err != nil {
+			p.err = msg.err
+
 			if p.quitOnErr {
 				cmds = append(cmds, tea.Sequentially(
 					tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
@@ -160,43 +178,37 @@ func (p *Progress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.err == EOF_ProgErr {
+				p.err = nil
 				p.displayMsg = "done!"
 
-				if !p.quitOnErr {
-					return p, tea.Batch(p.Progress.IncrPercent(1.0), p.waitForActivity())
-				}
-
-				cmds = append(cmds, p.Progress.IncrPercent(1.0))
-				return p, tea.Batch(cmds...)
+				p.percentage = 1.0
 			}
 
-			p.err = msg.err
+			p.status = ProgComplete
 
 			return p, tea.Batch(cmds...)
 		}
 
+		p.percentage += msg.amount
 		return p, tea.Batch(
-			p.Progress.IncrPercent(float64(msg.amount)),
 			p.waitForActivity(),
 		)
-
-	case progress.FrameMsg:
-		pm, cmd := p.Progress.Update(msg)
-		p.Progress = pm.(progress.Model)
-
-		return p, cmd
 	}
 
 	return p, nil
 }
 
-func (p *Progress) View() string {
+func (p *ProgressBar) View() string {
 	fn := func() string { return defStyle(p.displayMsg) }
 	if p.err != nil {
 		fn = func() string { return errStyle(p.err.Error()) }
 	}
 
+	if p.status == ProgComplete {
+		p.status = ProgFinished
+	}
+
 	pad := strings.Repeat(" ", PADDING)
 	return pad + fn() + "\n" +
-		pad + p.Progress.View() + "\n"
+		pad + p.Progress.ViewAs(p.percentage) + "\n"
 }

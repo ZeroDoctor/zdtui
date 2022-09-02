@@ -8,45 +8,45 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type MultiProgressOption func(mp *MultiProgress)
+type MultiProgressOption func(mp *MultiProgressBar)
 
 func MultiProgWorkerOption(workers int) MultiProgressOption {
-	return func(mp *MultiProgress) {
+	return func(mp *MultiProgressBar) {
 		mp.workers = workers
 	}
 }
 
 func MultiProgPondOptions(opts ...pond.Option) MultiProgressOption {
-	return func(mp *MultiProgress) {
+	return func(mp *MultiProgressBar) {
 		mp.pondOpt = append(mp.pondOpt, opts...)
 	}
 }
 
 func MultiProgMaxCapicity(maxCap int) MultiProgressOption {
-	return func(mp *MultiProgress) {
+	return func(mp *MultiProgressBar) {
 		mp.maxCap = maxCap
 	}
 }
 
-type MultiProgress struct {
+type MultiProgressBar struct {
 	workload []ProgressWork
 	workers  int
 	maxCap   int
-	bars     []*Progress
-	progChan chan *Progress
+	bars     []*ProgressBar
+	progChan chan *ProgressBar
 	err      error
 	pondOpt  []pond.Option
 	pool     *pond.TaskGroupWithContext
 	ctx      context.Context
 }
 
-func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...MultiProgressOption) (*MultiProgress, context.Context) {
-	m := &MultiProgress{
+func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...MultiProgressOption) (*MultiProgressBar, context.Context) {
+	m := &MultiProgressBar{
 		workers:  5,
 		maxCap:   len(workload),
 		workload: workload,
 		ctx:      ctx,
-		progChan: make(chan *Progress, len(workload)),
+		progChan: make(chan *ProgressBar, len(workload)),
 	}
 
 	for _, opt := range opts {
@@ -57,17 +57,18 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 	m.pool, m.ctx = pd.GroupContext(m.ctx)
 
 	for i := range workload {
+		work := workload[i]
 		m.bars = append(m.bars, NewProgress(
-			m.workload[i],
+			work,
 			ProgSetID(i),
-			// ProgDontQuitOnErr(),
+			ProgDontQuitOnErr(),
 		))
 	}
 
 	return m, m.ctx
 }
 
-func (m *MultiProgress) Init() tea.Cmd {
+func (m *MultiProgressBar) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	for i := range m.bars {
 		n := i
@@ -82,7 +83,7 @@ func (m *MultiProgress) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *MultiProgress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *MultiProgressBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		for i := range msg.Runes {
@@ -97,26 +98,22 @@ func (m *MultiProgress) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		model, cmd := m.bars[msg.id].Update(msg)
-		m.bars[msg.id] = model.(*Progress)
+		m.bars[msg.id] = model.(*ProgressBar)
 
 		return m, cmd
 	}
 
 	cmds := make([]tea.Cmd, len(m.bars))
 	for i := range m.bars {
-		if m.bars[i].finished {
-			continue
-		}
-
 		var model tea.Model
 		model, cmds[i] = m.bars[i].Update(msg)
-		m.bars[i].Progress = model.(*Progress).Progress
+		m.bars[i].Progress = model.(*ProgressBar).Progress
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m *MultiProgress) View() string {
+func (m *MultiProgressBar) View() string {
 	var builder strings.Builder
 
 	for i := range m.bars {
