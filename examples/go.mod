@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/charmbracelet/bubbletea v0.22.1
-	github.com/zerodoctor/zdtui v0.0.0-20220830020810-49d1c979d1bb
+	github.com/zerodoctor/zdtui v0.0.0-20220902204616-0abadf69066b
 )
 
 require (
@@ -28,3 +28,5 @@ require (
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
+
+replace github.com/zerodoctor/zdtui => ../

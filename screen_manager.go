@@ -1,4 +1,4 @@
-package main
+package zdtui
 
 import "github.com/zerodoctor/zdtui/data"
 

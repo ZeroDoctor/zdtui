@@ -1,9 +1,9 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -84,11 +84,12 @@ type ProgressBar struct {
 	msgChan    chan tea.Msg
 	displayMsg string
 	err        error
+	ctx        context.Context
 
 	Progress progress.Model
 }
 
-func NewProgress(work ProgressWork, opts ...ProgressOption) *ProgressBar {
+func NewProgress(ctx context.Context, work ProgressWork, opts ...ProgressOption) *ProgressBar {
 	prog := &ProgressBar{
 		id:         -1,
 		work:       work,
@@ -99,6 +100,7 @@ func NewProgress(work ProgressWork, opts ...ProgressOption) *ProgressBar {
 			progress.WithColorProfile(termenv.ANSI256),
 		),
 		msgChan: make(chan tea.Msg, 50),
+		ctx:     ctx,
 	}
 
 	for _, opt := range opts {
@@ -147,7 +149,7 @@ func (p *ProgressBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i := range msg.Runes {
 			switch msg.Runes[i] {
 			case 'c':
-				return p, func() tea.Msg { return Cancel_ProgErr }
+				return p, func() tea.Msg { return ProgMsg{id: p.id, err: Cancel_ProgErr} }
 			}
 		}
 
@@ -161,26 +163,17 @@ func (p *ProgressBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ProgMsg:
 		var cmds []tea.Cmd
-		if msg.nextFrame != nil {
-			cmds = append(cmds, msg.nextFrame)
-		}
 
 		if msg.err != nil {
 			p.err = msg.err
 
 			if p.quitOnErr {
-				cmds = append(cmds, tea.Sequentially(
-					tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg { // pause a bit before quiting
-						return nil
-					}),
-					tea.Quit,
-				))
+				cmds = append(cmds, tea.Quit)
 			}
 
 			if msg.err == EOF_ProgErr {
 				p.err = nil
 				p.displayMsg = "done!"
-
 				p.percentage = 1.0
 			}
 

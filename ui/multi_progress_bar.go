@@ -59,6 +59,7 @@ func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...Mult
 	for i := range workload {
 		work := workload[i]
 		m.bars = append(m.bars, NewProgress(
+			m.ctx,
 			work,
 			ProgSetID(i),
 			ProgDontQuitOnErr(),
