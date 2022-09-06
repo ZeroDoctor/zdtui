@@ -66,10 +66,10 @@ func ProgSetID(id int) ProgressOption {
 }
 
 type ProgMsg struct {
-	id        int
-	amount    float64
-	err       DefProgErr
-	nextFrame tea.Cmd
+	id      int
+	amount  float64
+	display string
+	err     DefProgErr
 }
 
 type ProgressBar struct {
@@ -120,6 +120,10 @@ func (p *ProgressBar) Start() tea.Msg {
 
 func (p *ProgressBar) SendTick(tick float64) {
 	p.msgChan <- ProgMsg{id: p.id, amount: tick}
+}
+
+func (p *ProgressBar) Display(msg string) {
+	p.msgChan <- ProgMsg{id: p.id, display: msg}
 }
 
 func (p *ProgressBar) waitForActivity() tea.Cmd {
@@ -173,16 +177,23 @@ func (p *ProgressBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if msg.err == EOF_ProgErr {
 				p.err = nil
-				p.displayMsg = "done!"
+				p.displayMsg += " - done!"
 				p.percentage = 1.0
 			}
 
 			p.status = ProgComplete
 
+			cmds = append(cmds, func() tea.Msg { return MPQuit(true) })
+
 			return p, tea.Batch(cmds...)
 		}
 
 		p.percentage += msg.amount
+
+		if msg.display != "" {
+			p.displayMsg = msg.display
+		}
+
 		return p, tea.Batch(
 			p.waitForActivity(),
 		)

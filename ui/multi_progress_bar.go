@@ -3,64 +3,37 @@ package ui
 import (
 	"context"
 	"strings"
+	"time"
 
-	"github.com/alitto/pond"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type MultiProgressOption func(mp *MultiProgressBar)
 
-func MultiProgWorkerOption(workers int) MultiProgressOption {
-	return func(mp *MultiProgressBar) {
-		mp.workers = workers
-	}
-}
-
-func MultiProgPondOptions(opts ...pond.Option) MultiProgressOption {
-	return func(mp *MultiProgressBar) {
-		mp.pondOpt = append(mp.pondOpt, opts...)
-	}
-}
-
-func MultiProgMaxCapicity(maxCap int) MultiProgressOption {
-	return func(mp *MultiProgressBar) {
-		mp.maxCap = maxCap
-	}
-}
+type MPQuit bool
 
 type MultiProgressBar struct {
-	workload []ProgressWork
-	workers  int
-	maxCap   int
-	bars     []*ProgressBar
-	progChan chan *ProgressBar
-	err      error
-	pondOpt  []pond.Option
-	pool     *pond.TaskGroupWithContext
-	ctx      context.Context
+	workload          []ProgressWork
+	bars              []*ProgressBar
+	err               error
+	ctx               context.Context // not really used
+	totalFinishedJobs int
 }
 
 func NewMultiProgress(ctx context.Context, workload []ProgressWork, opts ...MultiProgressOption) (*MultiProgressBar, context.Context) {
 	m := &MultiProgressBar{
-		workers:  5,
-		maxCap:   len(workload),
 		workload: workload,
 		ctx:      ctx,
-		progChan: make(chan *ProgressBar, len(workload)),
 	}
 
 	for _, opt := range opts {
 		opt(m)
 	}
 
-	pd := pond.New(m.workers, m.maxCap, m.pondOpt...)
-	m.pool, m.ctx = pd.GroupContext(m.ctx)
-
 	for i := range workload {
-		work := workload[i]
 		m.bars = append(m.bars, NewProgress(
 			m.ctx,
-			work,
+			workload[i],
 			ProgSetID(i),
 			ProgDontQuitOnErr(),
 		))
@@ -98,17 +71,32 @@ func (m *MultiProgressBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 
+		var cmds []tea.Cmd
+
 		model, cmd := m.bars[msg.id].Update(msg)
+		cmds = append(cmds, cmd)
 		m.bars[msg.id] = model.(*ProgressBar)
 
-		return m, cmd
+		return m, tea.Batch(cmds...)
+
+	case MPQuit:
+		m.totalFinishedJobs++
+		if m.totalFinishedJobs >= len(m.bars) {
+
+			return m, tea.Sequentially(
+				tea.Tick(1*time.Second, func(t time.Time) tea.Msg { return nil }),
+				tea.Quit,
+			)
+		}
+
+		return m, nil
 	}
 
 	cmds := make([]tea.Cmd, len(m.bars))
 	for i := range m.bars {
 		var model tea.Model
 		model, cmds[i] = m.bars[i].Update(msg)
-		m.bars[i].Progress = model.(*ProgressBar).Progress
+		m.bars[i] = model.(*ProgressBar)
 	}
 
 	return m, tea.Batch(cmds...)
