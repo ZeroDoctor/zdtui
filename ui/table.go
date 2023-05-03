@@ -40,7 +40,7 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 
 	var cols []table.Column
 	for _, str := range header {
-		cols = append(cols, table.NewFlexColumn(str, str, len(header)))
+		cols = append(cols, table.NewFlexColumn(str, str, 1))
 		if lipgloss.Width(str) > maxWidth {
 			maxWidth = lipgloss.Width(str)
 		}
@@ -54,7 +54,6 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 			rowData[header[i]] = k
 
 			kstr := fmt.Sprintf("%+v", k)
-			fmt.Println(kstr)
 			if lipgloss.Width(kstr) > maxWidth {
 				maxWidth = lipgloss.Width(kstr)
 			}
@@ -63,7 +62,7 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 		rows = append(rows, table.NewRow(rowData))
 	}
 
-	t.table = table.New(cols).WithRows(rows).WithTargetWidth(maxWidth * len(data))
+	t.table = table.New(cols).WithRows(rows).WithTargetWidth(maxWidth * len(data) * 2)
 
 	return t, nil
 }
