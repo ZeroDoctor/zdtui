@@ -61,7 +61,7 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 		rows = append(rows, table.NewRow(rowData))
 	}
 
-	t.table = table.New(cols).WithRows(rows).WithTargetWidth(maxWidth * len(data))
+	t.table = table.New(cols).WithTargetWidth(maxWidth * len(data)).WithRows(rows)
 
 	return t, nil
 }
