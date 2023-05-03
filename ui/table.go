@@ -2,6 +2,8 @@ package ui
 
 import (
 	//table "github.com/calyptia/go-bubble-table"
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -34,9 +36,14 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 
 	//t.table = tbl
 
+	var maxWidth int
+
 	var cols []table.Column
 	for _, str := range header {
 		cols = append(cols, table.NewFlexColumn(str, str, len(header)))
+		if lipgloss.Width(str) > maxWidth {
+			maxWidth = lipgloss.Width(str)
+		}
 	}
 
 	var rows []table.Row
@@ -45,12 +52,18 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 
 		for i, k := range d {
 			rowData[header[i]] = k
+
+			kstr := fmt.Sprintf("%+v", k)
+			fmt.Println(kstr)
+			if lipgloss.Width(kstr) > maxWidth {
+				maxWidth = lipgloss.Width(kstr)
+			}
 		}
 
 		rows = append(rows, table.NewRow(rowData))
 	}
 
-	t.table = table.New(cols).WithRows(rows)
+	t.table = table.New(cols).WithRows(rows).WithTargetWidth(maxWidth * len(data))
 
 	return t, nil
 }
