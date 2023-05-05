@@ -48,7 +48,7 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 
 	var rows []table.Row
 	for _, d := range data {
-		rowData := make(table.RowData)
+		rowData := make(table.RowData, len(data))
 
 		for i, k := range d {
 			rowData[header[i]] = k
@@ -62,7 +62,7 @@ func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
 		rows = append(rows, table.NewRow(rowData))
 	}
 
-	t.table = table.New(cols).WithRows(rows).WithTargetWidth(maxWidth * len(data))
+	t.table = table.New(cols).WithRows(rows).WithTargetWidth((maxWidth + 2) * len(header))
 
 	return t, nil
 }
