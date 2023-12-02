@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/evertras/bubble-table/table"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
 var (
@@ -14,57 +14,33 @@ var (
 )
 
 type Table struct {
-	table table.Model
+	table *table.Table
 }
 
 func NewTable(header []string, data [][]interface{}, w, h int) (Table, error) {
-	t := Table{}
-
-	top, right, bottom, left := style.GetPadding()
-	w = w - left - right
-	h = h - top - bottom
-
-	// tbl := table.New(header, w, h)
-	//
-	// var rows []table.Row
-	// for _, d := range data {
-	// 	var r table.SimpleRow
-	// 	t := append(r, append(table.SimpleRow{}, d...))
-	// 	rows = append(rows, t)
-	// }
-	// tbl.SetRows(rows)
-
-	//t.table = tbl
-
-	var maxWidth int
-
-	var cols []table.Column
-	for _, str := range header {
-		cols = append(cols, table.NewFlexColumn(str, str, 1))
-		if lipgloss.Width(str) > maxWidth {
-			maxWidth = lipgloss.Width(str)
-		}
-	}
-
-	var rows []table.Row
+	var rows [][]string
 	for _, d := range data {
-		rowData := make(table.RowData, len(data))
-
-		for i, k := range d {
-			rowData[header[i]] = k
-
-			kstr := fmt.Sprintf("%+v", k)
-			if lipgloss.Width(kstr) > maxWidth {
-				maxWidth = lipgloss.Width(kstr)
-			}
+		var temp []string
+		for _, k := range d {
+			temp = append(temp, fmt.Sprintf("%+v", k))
 		}
-
-		rows = append(rows, table.NewRow(rowData))
+		rows = append(rows, temp)
 	}
 
-	t.table = table.New(cols).WithRows(rows).WithTargetWidth((maxWidth + 2) * len(header))
+	t := table.New().
+		Border(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("FF"))).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			switch {
+			case row == 0:
+				return lipgloss.NewStyle().Bold(true)
+			}
+			return lipgloss.NewStyle()
+		}).
+		Headers(header...).
+		Rows(rows...)
 
-	return t, nil
+	return Table{table: t}, nil
 }
 
 func (t Table) Init() tea.Cmd { return nil }
@@ -72,5 +48,5 @@ func (t Table) Init() tea.Cmd { return nil }
 func (t Table) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return nil, nil }
 
 func (t Table) View() string {
-	return style.Render(t.table.View())
+	return style.Render(t.table.String())
 }
